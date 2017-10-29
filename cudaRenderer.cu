@@ -469,10 +469,9 @@ _shadePixel(float2 pixelCenter, float* circleCenter, float4* imagePtr) {
 
 		    oneMinusAlpha = 1.f - alpha;
 
-		    // newColor.x = alpha * rgb.x + oneMinusAlpha * existingColor.x;
-		    // newColor.y = alpha * rgb.y + oneMinusAlpha * existingColor.y;
-		    // newColor.z = alpha * rgb.z + oneMinusAlpha * existingColor.z;
-		    newColor = alpha * rgb + oneMinusAlpha * existingColor;
+		    newColor.x = alpha * rgb.x + oneMinusAlpha * existingColor.x;
+		    newColor.y = alpha * rgb.y + oneMinusAlpha * existingColor.y;
+		    newColor.z = alpha * rgb.z + oneMinusAlpha * existingColor.z;
 		    newColor.w = alpha + existingColor.w;
 
 		    existingColor = newColor;
