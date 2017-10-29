@@ -3,3 +3,7 @@
 objs/*
 logs/*
 cmake-build-debug/*
+
+render
+render_ref
+render_ref_latedays
