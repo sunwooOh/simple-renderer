@@ -417,24 +417,26 @@ __device__ __inline__ void
 _shadePixel(float2 pixelCenter, float* circleCenter, float4* imagePtr) {
 
 	int numCircles = cuConstRendererParams.numCircles;
-	bool* toColor = new bool[numCircles];
-    float3* rgb = new float3[numCircles];
-    float* alpha = new float[numCircles];
-    float* oneMinusAlpha = new float[numCircles];
+	// bool* toColor = new bool[numCircles];
+    // float3* rgb = new float3[numCircles];
+    // float* alpha = new float[numCircles];
+    // float* oneMinusAlpha = new float[numCircles];
+    float3 rgb;
+    float alpha;
+    float oneMinusAlpha;
 
     float4 existingColor;
     float4 newColor;
 
     float3 p;
+	existingColor = *imagePtr;
+	newColor = *imagePtr;
 
 	for (int i = 0; i < numCircles; i++) {
-		existingColor = *imagePtr;
 
 		p.x = circleCenter[i*3];
 		p.y = circleCenter[i*3 + 1];
-		// p.z = circleCenter[i*3 + 2];
 
-		// printf("[Circle %d] Center: %f, %f / pixelCenter: %f, %f\n", i, p.x, p.y, pixelCenter.x, pixelCenter.y);
 		float diffX = p.x - pixelCenter.x;
 	    float diffY = p.y - pixelCenter.y;
 	    float pixelDist = diffX * diffX + diffY * diffY;
@@ -443,37 +445,44 @@ _shadePixel(float2 pixelCenter, float* circleCenter, float4* imagePtr) {
 	    float maxDist = rad * rad;
 
 	    if (pixelDist <= maxDist) {
-	        toColor[i] = true;
+	        // toColor[i] = true;
 
 	        if (cuConstRendererParams.sceneName == SNOWFLAKES || cuConstRendererParams.sceneName == SNOWFLAKES_SINGLE_FRAME) {
+    			p.z = circleCenter[i*3 + 2];
+
 		        const float kCircleMaxAlpha = .5f;
 		        const float falloffScale = 4.f;
 
 		        float normPixelDist = sqrt(pixelDist) / rad;
-		        rgb[i] = lookupColor(normPixelDist);
+		        rgb = lookupColor(normPixelDist);
 
 		        float maxAlpha = .6f + .4f * (1.f-p.z);
 		        maxAlpha = kCircleMaxAlpha * fmaxf(fminf(maxAlpha, 1.f), 0.f); // kCircleMaxAlpha * clamped value
-		        alpha[i] = maxAlpha * exp(-1.f * falloffScale * normPixelDist * normPixelDist);
+		        alpha = maxAlpha * exp(-1.f * falloffScale * normPixelDist * normPixelDist);
 
 		    } else {
 		        // simple: each circle has an assigned color
 		        int index3 = 3 * i;
-		        rgb[i] = *(float3*)&(cuConstRendererParams.color[index3]);
-		        alpha[i] = .5f;
+		        rgb = *(float3*)&(cuConstRendererParams.color[index3]);
+		        alpha = .5f;
 		    }
 
-		    oneMinusAlpha[i] = 1.f - alpha[i];
-		}
+		    oneMinusAlpha = 1.f - alpha;
+
 		    // newColor.x = alpha * rgb.x + oneMinusAlpha * existingColor.x;
 		    // newColor.y = alpha * rgb.y + oneMinusAlpha * existingColor.y;
 		    // newColor.z = alpha * rgb.z + oneMinusAlpha * existingColor.z;
-		    // newColor.w = alpha + existingColor.w;
+		    newColor = alpha * rgb + oneMinusAlpha * existingColor;
+		    newColor.w = alpha + existingColor.w;
 
-		    // // global memory write
-		    // *imagePtr = newColor;
+		    existingColor = newColor;
+		}
 	}
-	*imagePtr = _newColor(toColor, rgb, existingColor, alpha, oneMinusAlpha);
+
+    // global memory write
+    *imagePtr = newColor;
+	
+	// *imagePtr = _newColor(toColor, rgb, existingColor, alpha, oneMinusAlpha);
 }
 
 // kernelRenderCircles -- (CUDA device code)
@@ -780,6 +789,7 @@ CudaRenderer::render() {
         (image->width + blockDim.x - 1) / blockDim.x,
         (image->height + blockDim.y - 1) / blockDim.y);
 
+    // printf("Number of circles: %d\n", numCircles);
     // printf("Image width: %d\nImage height: %d\n", image->width, image->height);
     // for (int i = 0; i < 3*numCircles; i += 3) {
 	   //  printf("Circle %d\n\t* Center: %f, %f\n\t* Radius: %f\n",
