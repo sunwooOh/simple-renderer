@@ -1,0 +1,5 @@
+*.ppm
+
+objs/*
+logs/*
+cmake-build-debug/*
